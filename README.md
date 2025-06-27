@@ -10,6 +10,7 @@ A customizable web application for discovering and exploring student clubs and o
 - **Responsive Design**: Beautiful, mobile-friendly interface with UC Berkeley branding
 - **Database Integration**: MongoDB backend for scalable data storage
 - **Easy Customization**: Adaptable for any club type or institution
+- **LLM-Powered Resume Support**: Get custom support for your application based on your resume.
 
 ## 📊 Data Format
 
@@ -76,3 +77,15 @@ Hackathon Club,HC,https://hackathon.club,Programming competitions,Application-ba
 
 
 *This project was originally created for CS/EECS clubs at UC Berkeley but is designed to be easily adaptable for any organization's club directory needs.*
+
+## 📄 LLM-Powered Resume Support
+
+This application includes a unique feature that leverages a Large Language Model (LLM) to provide customized support for your club applications. By analyzing your resume, the application can help you identify the most relevant clubs for your skills and experience, and even provide suggestions on how to tailor your application to specific clubs.
+
+### How it Works
+
+1.  **Upload Your Resume**: Upload your resume in PDF or DOCX format.
+2.  **Select Clubs**: Choose the clubs you're interested in applying to.
+3.  **Get Personalized Advice**: The LLM will analyze your resume and provide you with personalized advice on how to best position yourself for each club.
+
+This feature is designed to help you stand out from the crowd and increase your chances of getting into the clubs you're most passionate about.
