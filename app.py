@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from database import CSClubsDatabase
+from resume_manager import ResumeDatabase
 import os
 
 # Page configuration
@@ -189,7 +190,10 @@ def display_club_card(club):
             st.markdown(f'[🔗 Visit Website]({club["Website"]})')
         if club.get("ApplicationLink"):
             st.markdown(f'[📝 Application Link]({club["ApplicationLink"]})')
-        
+            
+        # Application Time
+        st.markdown(f'<div class="field-label">📅 Application Time</div>', unsafe_allow_html=True)
+        st.write(club.get("Fall Application Time", "N/A"))
         # Freshman friendliness
         friendliness = club.get("Freshman Friendliness (General Vibe)", "N/A")
         color_class = get_friendliness_color_class(friendliness)
@@ -260,6 +264,112 @@ def create_analytics_charts(clubs_data):
                     showlegend=False
                 )
                 st.plotly_chart(fig, use_container_width=True)
+
+def create_resume_section():
+    """Create the resume upload and management section"""
+    st.markdown("### 📄 Resume Management")
+    st.markdown("Upload and manage your resumes for club applications")
+    
+    # Initialize database
+    resume_db = ResumeDatabase()
+    
+    # Create tabs for upload and view
+    upload_tab, view_tab = st.tabs(["📤 Upload Resume", "📋 View Resumes"])
+    
+    with upload_tab:
+        st.markdown("#### Upload Your Resume")
+        
+        # File uploader
+        uploaded_file = st.file_uploader(
+            "Choose your resume file",
+            type=['pdf'],
+            help="Currently supports PDF files only"
+        )
+        
+        if uploaded_file is not None:
+            # Display file info
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info(f"**Filename:** {uploaded_file.name}")
+                st.info(f"**File size:** {uploaded_file.size / 1024:.1f} KB")
+            
+            with col2:
+                st.info(f"**File type:** {uploaded_file.type}")
+            
+            # Upload button
+            if st.button("📤 Upload Resume", type="primary"):
+                with st.spinner("Processing resume..."):
+                    # Reset file pointer
+                    uploaded_file.seek(0)
+                    
+                    # Save to database
+                    resume_id = resume_db.save_resume(
+                        filename=uploaded_file.name,
+                        file_content=uploaded_file,
+                        file_type="pdf"
+                    )
+                    
+                    if resume_id:
+                        st.success(f"✅ Resume uploaded successfully!")
+                        st.balloons()
+                        
+                        # Show preview
+                        resume = resume_db.get_resume_by_id(resume_id)
+                        if resume:
+                            st.markdown("#### Preview")
+                            preview_text = resume["text_content"][:500] + "..." if len(resume["text_content"]) > 500 else resume["text_content"]
+                            st.text_area("Resume Content Preview", preview_text, height=150)
+                    else:
+                        st.error("❌ Failed to upload resume. Please try again.")
+    
+    with view_tab:
+        st.markdown("#### Your Uploaded Resumes")
+        
+        # Get all resumes
+        resumes = resume_db.get_all_resumes()
+        
+        if not resumes:
+            st.info("📝 No resumes uploaded yet. Upload your first resume in the Upload tab!")
+        else:
+            # Display statistics
+            stats = resume_db.get_resume_stats()
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total Resumes", stats["total_resumes"])
+            with col2:
+                st.metric("Avg Word Count", f"{stats['avg_word_count']:.0f}")
+            
+            st.markdown("---")
+            
+            # Display each resume
+            for resume in resumes:
+                with st.expander(f"📄 {resume['filename']} - {resume['upload_timestamp'].strftime('%Y-%m-%d %H:%M')}"):
+                    col1, col2, col3 = st.columns([2, 1, 1])
+                    
+                    with col1:
+                        st.write(f"**Word Count:** {resume.get('word_count', 'N/A')}")
+                        st.write(f"**Character Count:** {resume.get('character_count', 'N/A')}")
+                        st.write(f"**Upload Date:** {resume['upload_timestamp'].strftime('%Y-%m-%d %H:%M:%S')}")
+                    
+                    with col2:
+                        if st.button(f"👁️ View", key=f"view_{resume['_id']}"):
+                            st.text_area(
+                                "Resume Content",
+                                resume["text_content"],
+                                height=300,
+                                key=f"content_{resume['_id']}"
+                            )
+                    
+                    with col3:
+                        if st.button(f"🗑️ Delete", key=f"delete_{resume['_id']}", type="secondary"):
+                            if resume_db.delete_resume(resume['_id']):
+                                st.success("Resume deleted!")
+                                st.rerun()
+                            else:
+                                st.error("Failed to delete resume")
+    
+    # Close database connection
+    resume_db.close_connection()
 
 def main():
     # Header
@@ -346,8 +456,8 @@ def main():
         st.metric("🎓 Freshman-Friendly", high_friendliness)
     
     # Tabs for different views
-    tab1, tab2 = st.tabs(["📋 Club Directory", "📊 Analytics"])
-    
+    tab1, tab2, tab3 = st.tabs(["📋 Club Directory", "📊 Analytics", "📄 Resume Manager"])
+
     with tab1:
         st.markdown("### Club Directory")
         
@@ -376,6 +486,7 @@ def main():
         with col3:
             clubs_with_websites = len([c for c in clubs_data if c.get("Website")])
             st.metric("Clubs with Websites", clubs_with_websites)
-
+    with tab3:
+        create_resume_section()
 if __name__ == "__main__":
     main()
