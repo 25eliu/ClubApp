@@ -3,6 +3,7 @@ import pymongo
 from pymongo import MongoClient
 import csv
 import os
+from datetime import datetime
 
 class CSClubsDatabase:
     def __init__(self, connection_string="mongodb://localhost:27017/", database_name="cs_clubs_db", collection_name="clubs"):
@@ -12,6 +13,7 @@ class CSClubsDatabase:
         self.client = MongoClient(connection_string)
         self.database = self.client[database_name]
         self.collection = self.database[collection_name]
+        self.favorites_collection = self.database.user_favorites
         
     def load_csv_to_mongodb(self, csv_file_path):
         """
@@ -112,6 +114,82 @@ class CSClubsDatabase:
         except Exception as e:
             print(f"❌ Error getting stats: {str(e)}")
             return {}
+    
+    def save_favorite_club(self, user_id, club_name):
+        """
+        Add a club to user's favorites
+        """
+        try:
+            favorite_doc = {
+                "user_id": user_id,
+                "club_name": club_name,
+                "favorited_at": datetime.now()
+            }
+            
+            # Use upsert to avoid duplicates
+            result = self.favorites_collection.update_one(
+                {"user_id": user_id, "club_name": club_name},
+                {"$set": favorite_doc},
+                upsert=True
+            )
+            return True
+        except Exception as e:
+            print(f"Error saving favorite: {str(e)}")
+            return False
+    
+    def remove_favorite_club(self, user_id, club_name):
+        """
+        Remove a club from user's favorites
+        """
+        try:
+            result = self.favorites_collection.delete_one({
+                "user_id": user_id,
+                "club_name": club_name
+            })
+            return result.deleted_count > 0
+        except Exception as e:
+            print(f"Error removing favorite: {str(e)}")
+            return False
+    
+    def get_user_favorites(self, user_id):
+        """
+        Get list of favorited club names for a user
+        """
+        try:
+            favorites = list(self.favorites_collection.find(
+                {"user_id": user_id},
+                {"club_name": 1, "_id": 0}
+            ))
+            return [fav["club_name"] for fav in favorites]
+        except Exception as e:
+            print(f"Error getting favorites: {str(e)}")
+            return []
+    
+    def is_club_favorited(self, user_id, club_name):
+        """
+        Check if a specific club is favorited by user
+        """
+        try:
+            result = self.favorites_collection.find_one({
+                "user_id": user_id,
+                "club_name": club_name
+            })
+            return result is not None
+        except Exception as e:
+            print(f"Error checking favorite status: {str(e)}")
+            return False
+    
+    def get_favorites_count(self, user_id):
+        """
+        Get count of favorited clubs for a user
+        """
+        try:
+            count = self.favorites_collection.count_documents({"user_id": user_id})
+            return count
+        except Exception as e:
+            print(f"Error getting favorites count: {str(e)}")
+            return 0
+
     def close_connection(self):
         """
         Close MongoDB connection
