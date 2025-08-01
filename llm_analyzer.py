@@ -112,9 +112,19 @@ Create a structured action plan in the following JSON format:
         "2-3 specific resume/application improvements for this club",
         "Ways to better highlight relevant experiences for this opportunity"
     ],
-    "match_score": 85,
+    "match_score": null,
     "strategy_summary": "2-3 sentence overview of the recommended approach and likelihood of success"
 }}
+
+CRITICAL: Replace the null value in match_score with a calculated integer from 0-100.
+Base your calculation on:
+1. Student's background alignment with club focus (25%)
+2. Club's selectivity and freshman friendliness (25%)  
+3. Student's relevant experience and skills (25%)
+4. Application competitiveness (25%)
+
+DO NOT use 85 or any default value. Calculate based on the specific analysis above.
+
 
 STRATEGY GUIDELINES:
 1. Be specific to UC Berkeley's campus culture and resources
@@ -170,13 +180,33 @@ Provide only the JSON response with no additional text.
             
             data = json.loads(response)
             
+            # Handle match_score parsing more robustly
+            match_score_raw = data.get("match_score", 0)
+            try:
+                if isinstance(match_score_raw, str):
+                    # Try to extract a number from the string
+                    import re
+                    numbers = re.findall(r'\d+', match_score_raw)
+                    if numbers:
+                        match_score = int(numbers[0])
+                        # Ensure it's within valid range
+                        match_score = max(0, min(100, match_score))
+                    else:
+                        match_score = 0
+                else:
+                    match_score = int(match_score_raw)
+                    # Ensure it's within valid range
+                    match_score = max(0, min(100, match_score))
+            except (ValueError, TypeError):
+                match_score = 0
+            
             return AnalysisResult(
                 networking_strategy=data.get("networking_strategy", []),
                 campus_resources=data.get("campus_resources", []),
                 application_timeline=data.get("application_timeline", []),
                 preparation_steps=data.get("preparation_steps", []),
                 improvements=data.get("improvements", []),
-                match_score=int(data.get("match_score", 0)),
+                match_score=match_score,
                 strategy_summary=data.get("strategy_summary", "")
             )
             
